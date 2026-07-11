@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  whatsapp      String?
+  jenisKelamin  String?  // LAKI-LAKI or PEREMPUAN
+  grade         Int      // 7, 8, or 9
+  role      String   @default("USER") // USER or ADMIN
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  responses Response[]
+  counselings Counseling[]
+  visitorLogs VisitorLog[]
+}
+
+model Survey {
+  id          String     @id @default(cuid())
+  title       String
+  description String
+  grade       Int        // 7, 8, or 9
+  field       String     // PRIBADI, SOSIAL, BELAJAR, KARIR
+  active      Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  questions  Question[]
+  responses  Response[]
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  surveyId  String
+  text      String
+  order     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  survey   Survey    @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers  Answer[]
+}
+
+model Response {
+  id          String   @id @default(cuid())
+  userId      String
+  surveyId    String
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  survey   Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers  Answer[]
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  responseId String
+  questionId String
+  value      String   // IYA or TIDAK
+  createdAt  DateTime @default(now())
+
+  response Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([responseId, questionId])
+}
+
+model Counseling {
+  id            String   @id @default(cuid())
+  studentId     String
+  date          DateTime
+  topic         String
+  field         String   // PRIBADI, SOSIAL, BELAJAR, KARIR, SEMUA
+  topicItems    String?  // JSON string of TopicItem[] for per-item IYA/TIDAK tracking
+  ringkasan     String?
+  notes         String?
+  followUp      String?
+  solusi        String?
+  status        String   @default("TERJADWAL") // TERJADWAL, SELESAI, DIBATALKAN
+  bkOfficer     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+model Setting {
+  id              String   @id @default(cuid())
+  key             String   @unique
+  value           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model VisitorLog {
+  id              String    @id @default(cuid())
+  userId          String
+  userName        String
+  userRole        String    // USER or ADMIN
+  loginAt         DateTime  @default(now())
+  logoutAt        DateTime?
+  durationSeconds Int?      // Duration in seconds (calculated on logout)
+  // Device info captured at login
+  deviceType      String?   // Smartphone, Tablet, Laptop/PC
+  deviceBrand     String?   // Samsung, Apple, Xiaomi, Asus, etc.
+  deviceModel     String?   // Model name if available
+  deviceOS        String?   // Android 13, Windows 11, iOS 17, etc.
+  browser         String?   // Chrome, Safari, Firefox, Edge
+  userAgent       String?   // Full User-Agent string for reference
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
