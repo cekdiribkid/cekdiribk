@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-        "dev": "next dev -p 3000",
+    "dev": "next dev -p 3000",
     "build": "prisma generate && next build",
     "start": "next start -p 3000",
     "lint": "eslint .",
@@ -91,7 +91,11 @@
     "eslint": "^9",
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.0",
     "tw-animate-css": "^1.3.5",
     "typescript": "5.9.3"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   }
 }
