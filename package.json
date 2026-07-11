@@ -3,8 +3,8 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3000",
-    "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/ && cp -r prisma .next/standalone/ && cp -r db .next/standalone/",
+        "dev": "next dev -p 3000",
+    "build": "prisma generate && next build",
     "start": "next start -p 3000",
     "lint": "eslint .",
     "db:push": "prisma db push",
