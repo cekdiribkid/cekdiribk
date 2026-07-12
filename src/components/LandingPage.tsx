@@ -19,7 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { useAuth, apiFetch, FIELD_CONFIG, renderLearnMoreMarkdown } from "@/lib/app-shared";
+import { useAuth, apiFetch, FIELD_CONFIG, renderLearnMoreMarkdown, UserData } from "@/lib/app-shared";
 
 export default function LandingPage() {
   const { setUser } = useAuth();
@@ -112,7 +112,7 @@ export default function LandingPage() {
   // Fetch school settings for profil sekolah section
   useEffect(() => {
     apiFetch("/api/settings", {})
-      .then((data) => setSchoolInfo(data.settings || {}))
+      .then((data) => setSchoolInfo(data.settings as Record<string, string> || {}))
       .catch(() => {});
   }, []);
 
@@ -197,7 +197,7 @@ export default function LandingPage() {
 
     try {
       if (isLogin) {
-        const data = await apiFetch("/api/auth/login", {
+        const data: { user: UserData; visitorLogId: string } = await apiFetch("/api/auth/login", {
           method: "POST",
           body: JSON.stringify({ email: formData.email, password: formData.password }),
         });
@@ -236,7 +236,7 @@ export default function LandingPage() {
             image: photoData || undefined,
           }),
         });
-        setUser({ ...data.user, visitorLogId: data.visitorLogId });
+        setUser({ ...data.user as UserData, visitorLogId: data.visitorLogId } as UserData);
         toast({ title: "Registrasi berhasil!", description: `Selamat datang, ${data.user.name}` });
         setPhotoData("");
       }
@@ -344,7 +344,7 @@ export default function LandingPage() {
                   <Sparkles className="h-5 w-5" />
                 </span>
                 <span className="flex flex-col items-start text-left">
-                  <span className="text-base font-bold text-gray-900">Pelajari Lebih Lanjut</span>
+                  <span className="text-base font-bold bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent">Pelajari Lebih Lanjut</span>
                   <span className="text-xs text-gray-600">
                     Kenali seluruh fitur CekDiriBK.id — pilih panduan untuk <strong>Siswa</strong> atau <strong>Admin/Guru</strong>.
                   </span>
