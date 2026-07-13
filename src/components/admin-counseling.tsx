@@ -277,12 +277,12 @@ export default function AdminCounseling({ onNavigate }: { onNavigate: (view: Vie
           topicItems: formData.topicItems,
         }),
       }, user.id, user.role, String(user.grade));
-      setFormData(prev => ({
-        ...prev,
-        notes: data.notes || prev.notes,
-        followUp: data.followUp || prev.followUp,
-        solution: data.solution || prev.solution,
-      }));
+       setFormData(prev => ({
+         ...prev,
+         notes: data.notes || prev.notes,
+         followUp: data.followUp || prev.followUp,
+         solution: data.solusi || prev.solution,
+       }));
       toast({ title: "Berhasil", description: "Konten AI berhasil di-generate" });
     } catch (err: unknown) {
       toast({ title: "Error", description: err instanceof Error ? err.message : "Gagal generate AI", variant: "destructive" });

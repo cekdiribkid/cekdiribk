@@ -1,0 +1,19 @@
+
+🔍 Mengecek Konfigurasi AI...
+
+📊 Status Konfigurasi AI:
+========================
+
+Provider:  ✅ z-ai
+Base URL:  ✅ https://internal-api.z.ai/v1
+API Key:   ✅ 3485487f0a...
+Model:     ✅ default
+
+✅ AI SUDAH DIKONFIGURASI!
+   Fitur Generate AI seharusnya berfungsi.
+
+   Jika masih error, kemungkinan:
+   1. API Key sudah expired
+   2. Base URL salah
+   3. Model tidak tersedia
+

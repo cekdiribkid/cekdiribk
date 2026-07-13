@@ -45,16 +45,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Generate ALL three fields in one request
+    // Generate ALL four fields in one request
     const prompt = `Kamu adalah seorang Guru BK (Bimbingan Konseling) profesional di SMP. Berdasarkan topik konseling berikut, buatkan:
 
-1. CATATAN KONSELING: Observasi awal dan kondisi siswa terkait masalah ini. Tulis dalam 2-3 kalimat profesional.
-2. TINDAK LANJUT: Rencana tindak lanjut yang konkret, terukur, dan realistis untuk siswa SMP. Tulis dalam 2-3 poin.
-3. SOLUSI: Solusi dan rekomendasi praktis dengan langkah-langkah yang jelas sesuai untuk siswa SMP. Tulis dalam 2-3 poin.
+1. RINGKASAN: Ringkasan singkat (1 kalimat) tentang sesi konseling ini.
+2. CATATAN KONSELING: Observasi awal dan kondisi siswa terkait masalah ini. Tulis dalam 2-3 kalimat profesional.
+3. TINDAK LANJUT: Rencana tindak lanjut yang konkret, terukur, dan realistis untuk siswa SMP. Tulis dalam 2-3 poin.
+4. SOLUSI: Solusi dan rekomendasi praktis dengan langkah-langkah yang jelas sesuai untuk siswa SMP. Tulis dalam 2-3 poin.
 
 Topik: "${topicContext}"
 
 Format jawaban STRICTLY seperti ini (tanpa nomor, langsung isinya):
+---RINGKASAN---
+[isi ringkasan di sini]
 ---CATATAN---
 [isi catatan di sini]
 ---TINDAK LANJUT---
@@ -70,24 +73,52 @@ Gunakan bahasa Indonesia yang baik dan sopan.`;
     ]);
 
     // Parse the response to extract each section
+    let ringkasan = '';
     let notes = '';
     let followUp = '';
     let solusi = '';
 
-    try {
-      const catatanMatch = generatedText.match(/---CATATAN---\s*([\s\S]*?)(?=---TINDAK LANJUT---|$)/);
-      const tindakMatch = generatedText.match(/---TINDAK LANJUT---\s*([\s\S]*?)(?=---SOLUSI---|$)/);
-      const solusiMatch = generatedText.match(/---SOLUSI---\s*([\s\S]*?)$/);
+    // Debug: log raw generated text
+    console.log('=== RAW AI RESPONSE ===');
+    console.log(generatedText);
+    console.log('=======================');
 
+    try {
+      // Improved regex patterns - handle variations in formatting
+      // Use [\s\S] instead of . with 's' flag for compatibility
+      const ringkasanMatch = generatedText.match(/---?\s*RINGKASAN\s*---?\s*[\r\n]+([\s\S]*?)(?=[\r\n]+---?\s*CATATAN|[\r\n]+---?\s*TINDAK LANJUT|$)/i);
+      const catatanMatch = generatedText.match(/---?\s*CATATAN\s*---?\s*[\r\n]+([\s\S]*?)(?=[\r\n]+---?\s*TINDAK LANJUT|[\r\n]+---?\s*SOLUSI|$)/i);
+      const tindakMatch = generatedText.match(/---?\s*TINDAK LANJUT\s*---?\s*[\r\n]+([\s\S]*?)(?=[\r\n]+---?\s*SOLUSI|[\r\n]+---?\s*CATATAN|$)/i);
+      const solusiMatch = generatedText.match(/---?\s*SOLUSI\s*---?\s*[\r\n]+([\s\S]*?)(?=[\r\n]+---?\s*RINGKASAN|[\r\n]+---?\s*CATATAN|$)/i);
+
+      ringkasan = ringkasanMatch?.[1]?.trim() || '';
       notes = catatanMatch?.[1]?.trim() || '';
       followUp = tindakMatch?.[1]?.trim() || '';
       solusi = solusiMatch?.[1]?.trim() || '';
 
-      // Fallback: if parsing failed, put everything in notes
-      if (!notes && !followUp && !solusi) {
+      // Fallback: if parsing failed, try to extract content differently
+      if (!ringkasan && !notes && !followUp && !solusi) {
+        // Try alternative parsing - look for section headers with different patterns
+        const sections = generatedText.split(/(?=Ringkasan|Catatan|Tindak Lanjut|Solusi)/i);
+        for (const section of sections) {
+          if (section.toLowerCase().includes('ringkasan') && !ringkasan) {
+            ringkasan = section.replace(/Ringkasan/gi, '').trim();
+          } else if (section.toLowerCase().includes('catatan') && !notes) {
+            notes = section.replace(/Catatan/gi, '').trim();
+          } else if (section.toLowerCase().includes('tindak') && !followUp) {
+            followUp = section.replace(/Tindak Lanjut/gi, '').trim();
+          } else if (section.toLowerCase().includes('solusi') && !solusi) {
+            solusi = section.replace(/Solusi/gi, '').trim();
+          }
+        }
+      }
+
+      // Final fallback: if parsing still failed, put everything in notes
+      if (!ringkasan && !notes && !followUp && !solusi) {
         notes = generatedText;
       }
-    } catch {
+    } catch (err) {
+      console.error('Parse error:', err);
       notes = generatedText;
     }
 
@@ -100,8 +131,8 @@ Gunakan bahasa Indonesia yang baik dan sopan.`;
       return NextResponse.json({ result: solusi });
     }
 
-    // Default: return all three
-    return NextResponse.json({ notes, followUp, solusi });
+    // Default: return all four
+    return NextResponse.json({ ringkasan, notes, followUp, solusi });
   } catch (error) {
     console.error('Generate AI error:', error);
     const errMsg = error instanceof Error ? error.message : String(error);

@@ -290,15 +290,22 @@ export default function AdminCounseling({ onNavigate }: { onNavigate: (view: Vie
         }),
       }, user.id, user.role, String(user.grade));
 
-      // The API now returns all three fields in one response
-      setFormData(prev => ({
-        ...prev,
-        notes: data.notes || prev.notes,
-        followUp: data.followUp || prev.followUp,
-        solusi: data.solusi || prev.solusi,
-      }));
+        // The API returns AI-generated content
+        // Handle both new format and old format with catatan, tindakLanjut, solusi
+        const notes = (data as any).notes ?? (data as any).catatan ?? "";
+        const followUp = (data as any).followUp ?? (data as any).tindakLanjut ?? "";
+        const solusi = (data as any).solusi ?? "";
+        const ringkasan = (data as any).ringkasan ?? "";
+        
+        setFormData(prev => ({
+          ...prev,
+          notes: notes || prev.notes,
+          followUp: followUp || prev.followUp,
+          solusi: solusi || prev.solusi,
+          ringkasan: ringkasan || prev.ringkasan,
+        }));
 
-      toast({ title: "Berhasil", description: "Catatan, Tindak Lanjut, dan Solusi berhasil dihasilkan AI" });
+      toast({ title: "Berhasil", description: "Catatan, Ringkasan, Tindak Lanjut, dan Solusi berhasil dihasilkan AI" });
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : "Gagal generate AI";
       // Add guidance if AI not configured
@@ -393,6 +400,9 @@ export default function AdminCounseling({ onNavigate }: { onNavigate: (view: Vie
         topic: finalTopic,
         topicItems: formData.topicItems.length > 0 ? JSON.stringify(formData.topicItems) : null,
         ringkasan: formData.ringkasan || null,
+        notes: formData.notes || null,
+        followUp: formData.followUp || null,
+        solusi: formData.solusi || null,
       };
 
       if (editId) {
@@ -421,15 +431,15 @@ export default function AdminCounseling({ onNavigate }: { onNavigate: (view: Vie
         fetchData();
         // Open Kartu Konseling for newly created session
         if (result.counseling) {
-          setKartuCounseling(result.counseling);
+          setKartuCounseling(result.counseling as CounselingData);
           setShowKartuDialog(true);
           // Fetch school settings for Kartu
           try {
             const settingsData = await apiFetch("/api/admin/settings", {}, user?.id, user?.role, String(user?.grade));
             const settings: Record<string, string> = {};
-            if (settingsData.settings) {
-              for (const s of settingsData.settings) {
-                settings[s.key] = s.value;
+            if (settingsData.settings && typeof settingsData.settings === "object") {
+              for (const [key, value] of Object.entries(settingsData.settings)) {
+                settings[key] = value;
               }
             }
             setSchoolSettings(settings);
@@ -464,9 +474,9 @@ export default function AdminCounseling({ onNavigate }: { onNavigate: (view: Vie
     try {
       const data = await apiFetch("/api/admin/settings", {}, user?.id, user?.role, String(user?.grade));
       const settings: Record<string, string> = {};
-      if (data.settings) {
-        for (const s of data.settings) {
-          settings[s.key] = s.value;
+      if (data.settings && typeof data.settings === "object") {
+        for (const [key, value] of Object.entries(data.settings)) {
+          settings[key] = value;
         }
       }
       setSchoolSettings(settings);

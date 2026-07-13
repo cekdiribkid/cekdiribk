@@ -1,18 +1,7 @@
-/**
- * AI Configuration Utility
- *
- * Reads AI config from the database (Settings table) first,
- * then falls back to .z-ai-config file.
- *
- * Supports multiple OpenAI-compatible providers:
- * - z-ai: Internal Z AI Service (needs special headers)
- * - openai: OpenAI API
- * - groq: Groq API
- * - together: Together AI
- * - custom: Any OpenAI-compatible API
- */
+import { db } from './db';
 
-import { db } from '@/lib/db';
+// Load environment variables from .env file when this module is imported
+import 'dotenv/config';
 
 export interface AIConfig {
   provider: string;    // "z-ai" | "openai" | "groq" | "together" | "custom"
@@ -138,6 +127,22 @@ export async function getAIConfig(): Promise<AIConfig | null> {
   const fileConfig = await loadConfigFromFile();
   if (fileConfig) return fileConfig;
 
+  // Fallback to environment variables
+  const envProvider = process.env.AI_PROVIDER;
+  const envBaseUrl = process.env.AI_BASE_URL;
+  const envApiKey = process.env.AI_API_KEY; // Use AI_API_KEY for Groq and other providers
+  const envModel = process.env.AI_MODEL;
+
+  if (envProvider && envBaseUrl && envApiKey && envModel) {
+    return {
+      provider: envProvider,
+      baseUrl: envBaseUrl,
+      apiKey: envApiKey,
+      model: envModel,
+      source: 'default', // Indicate it's from environment variables
+    };
+  }
+
   return null;
 }
 
@@ -185,17 +190,11 @@ export async function validateApiKey(provider: string, baseUrl: string, apiKey: 
 
   // Check API key format
   if (provider === 'groq' && !apiKey.startsWith('gsk_')) {
-    return {
-      valid: false,
-      message: 'API Key Groq harus dimulai dengan "gsk_". Pastikan Anda mengcopy API Key yang benar dari console.groq.com → API Keys. Key yang Anda masukkan mungkin bukan API Key melainkan ID lain.',
-    };
+    return { valid: false, message: 'API Key Groq harus dimulai dengan "gsk_". Pastikan Anda mengcopy API Key yang benar dari console.groq.com → API Keys. Key yang Anda masukkan mungkin bukan API Key melainkan ID lain.' };
   }
 
   if (provider === 'openai' && !apiKey.startsWith('sk-')) {
-    return {
-      valid: false,
-      message: 'API Key OpenAI harus dimulai dengan "sk-". Pastikan Anda mengcopy API Key yang benar dari platform.openai.com → API Keys.',
-    };
+    return { valid: false, message: 'API Key OpenAI harus dimulai dengan "sk-". Pastikan Anda mengcopy API Key yang benar dari platform.openai.com → API Keys.' };
   }
 
   let cleanUrl = baseUrl.trim();
@@ -232,11 +231,16 @@ export async function validateApiKey(provider: string, baseUrl: string, apiKey: 
         if (provider === 'groq') {
           return {
             valid: false,
-            message: `API Key Groq ditolak (error ${response.status}). Kemungkinan penyebab:\n` +
-              `1. API Key sudah expired atau di-revoke — buat key baru di console.groq.com\n` +
-              `2. API Key salah copy — pastikan full key dimulai dari gsk_ sampai akhir\n` +
-              `3. Akun Groq belum terverifikasi — cek email verifikasi dari Groq\n` +
-              `4. Jika baru buat akun, tunggu 5-10 menit lalu coba lagi\n` +
+            message: `API Key Groq ditolak (error ${response.status}). Kemungkinan penyebab:
+` +
+              `1. API Key sudah expired atau di-revoke — buat key baru di console.groq.com
+` +
+              `2. API Key salah copy — pastikan full key dimulai dari gsk_ sampai akhir
+` +
+              `3. Akun Groq belum terverifikasi — cek email verifikasi dari Groq
+` +
+              `4. Jika baru buat akun, tunggu 5-10 menit lalu coba lagi
+` +
               `Detail error: ${errorMsg}`,
           };
         }
@@ -263,14 +267,14 @@ export async function validateApiKey(provider: string, baseUrl: string, apiKey: 
     if (provider === 'groq') {
       return {
         valid: true,
-        message: `API Key Groq valid! Ditemukan ${modelList.length} model tersedia.`,
+        message: `API Key Groq valid! Ditemukan ${modelList.length} model tersedia.`, 
         models: modelList,
       };
     }
 
     return {
       valid: true,
-      message: `API Key valid! Ditemukan ${modelList.length} model tersedia.`,
+      message: `API Key valid! Ditemukan ${modelList.length} model tersedia.`, 
       models: modelList,
     };
   } catch (err) {
@@ -298,6 +302,14 @@ export async function callAI(messages: { role: string; content: string }[]): Pro
     throw new Error('AI_NOT_CONFIGURED');
   }
 
+  // ---- Debug logging ----
+  console.log('=== AI CONFIG ===');
+  console.log('Provider:', config.provider);
+  console.log('Base URL:', config.baseUrl);
+  console.log('Model:', config.model);
+  console.log('API Key (truncated):', config.apiKey ? config.apiKey.slice(0, 8) + '...' : '(none)');
+  console.log('-------------------');
+
   // For Z AI provider, use the Z AI SDK which handles internal routing
   if (config.provider === 'z-ai') {
     try {
@@ -307,7 +319,7 @@ export async function callAI(messages: { role: string; content: string }[]): Pro
       const response = await Promise.race([
         zai.chat.completions.create({
           model: config.model || 'default',
-          messages: messages as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+          messages: messages as Array<{ role: 'system' | 'user' | 'assistant'; content: string }>, 
           thinking: { type: 'disabled' },
         }),
         new Promise<never>((_, reject) =>
@@ -412,11 +424,16 @@ export async function callAI(messages: { role: string; content: string }[]): Pro
       if (config.provider === 'groq') {
         throw new Error(
           `Groq API Key ditolak (error ${response.status}). ` +
-          `Kemungkinan penyebab:\n` +
-          `1. API Key sudah expired/di-revoke — buat baru di console.groq.com\n` +
-          `2. API Key tidak lengkap — pastikan full key dari gsk_ sampai akhir\n` +
-          `3. Akun belum terverifikasi — cek email dari Groq\n` +
-          `Solusi: Hapus konfigurasi, buat API Key baru, lalu simpan ulang.\n` +
+          `Kemungkinan penyebab:
+` +
+          `1. API Key sudah expired/di-revoke — buat baru di console.groq.com
+` +
+          `2. API Key tidak lengkap — pastikan full key dari gsk_ sampai akhir
+` +
+          `3. Akun belum terverifikasi — cek email dari Groq
+` +
+          `Solusi: Hapus konfigurasi, buat API Key baru, lalu simpan ulang.
+` +
           `Detail: ${errorMsg}`
         );
       }

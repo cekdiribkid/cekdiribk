@@ -1,0 +1,16 @@
+
+MIGRATION STATUS - 12/7/2026, 14.18.10
+=============================================
+
+Users:         54 / 50
+Surveys:       24 / 12
+Questions:     253 / 360
+Responses:     4 / 149
+Answers:       80 / 4470
+Counseling:    0 / 14
+Settings:      22 / 22
+Visitor Logs:  11 / 62
+
+TOTAL:         448 / 5139 (8.7%)
+
+⏳ Migration in progress...
