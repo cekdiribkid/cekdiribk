@@ -122,11 +122,41 @@ export default function AdminAnalysis({ onNavigate }: { onNavigate: (view: View)
   });
 
   // ===== Data untuk chart-chart baru =====
-  // (a) Top 5 Masalah — dari overallTopProblems atau fieldAnalysis[field].topProblems
-  const topProblemsData = (topProblemsScope === "ALL"
-    ? (analysisData?.overallTopProblems ?? [])
-    : (analysisData?.fieldAnalysis?.[topProblemsScope]?.topProblems ?? [])
-  ).map((p: { text: string; count: number }) => ({ text: p.text, Jumlah: p.count }));
+  // (a) Top 5 Masalah — hitung langsung dari responses agar tidak bergantung pada fieldAnalysis/topProblems dari API
+  // API fieldAnalysis.topProblems bisa ter-filter oleh filterField, jadi kita hitung di klien.
+  const computeTopProblems = (fieldFilter?: string, gradeFilter?: string): { text: string; count: number }[] => {
+    const filtered = (analysisData?.responses ?? []).filter((r: any) => {
+      if (fieldFilter && fieldFilter !== "ALL") {
+        const surveyField = r.survey?.field ?? r.survey?.survey?.field;
+        if (surveyField !== fieldFilter) return false;
+      }
+      if (gradeFilter && gradeFilter !== "ALL") {
+        if (r.user?.grade !== Number(gradeFilter)) return false;
+      }
+      return true;
+    });
+    const problemCounts = new Map<string, number>();
+    for (const r of filtered) {
+      for (const a of r.answers || []) {
+        if (a.value === "IYA" && a.question?.text) {
+          const prev = problemCounts.get(a.question.text) ?? 0;
+          problemCounts.set(a.question.text, prev + 1);
+        }
+      }
+    }
+    return Array.from(problemCounts.entries())
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([text, count]) => ({ text, count }));
+  };
+
+  const gradeFromFilter = filterGrade !== "ALL" ? filterGrade : undefined;
+  const topProblemsAll = topProblemsScope === "ALL"
+    ? computeTopProblems("ALL", gradeFromFilter)
+    : computeTopProblems(topProblemsScope, gradeFromFilter);
+
+  // Format untuk BarChart — konversi count -> Jumlah
+  const chartTopProblems = topProblemsAll.map(p => ({ text: p.text, Jumlah: p.count }));
 
   // (b) Distribusi Predikat (A/B/C/D/E) dihitung dari overall siswa
   const GRADE_HEX: Record<string, string> = {
@@ -374,17 +404,17 @@ export default function AdminAnalysis({ onNavigate }: { onNavigate: (view: View)
                         </SelectContent>
                       </Select>
                     </div>
-                    {topProblemsData.length === 0 ? (
+                    {chartTopProblems.length === 0 ? (
                       <p className="text-sm text-gray-500 py-16 text-center">Belum ada data masalah pada ruang lingkup ini.</p>
                     ) : (
                       <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={topProblemsData} layout="vertical" margin={{ left: 30, right: 20 }}>
+                        <BarChart data={chartTopProblems} layout="vertical" margin={{ left: 30, right: 20 }}>
                           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                           <XAxis type="number" allowDecimals={false} />
                           <YAxis type="category" dataKey="text" width={220} tick={{ fontSize: 11 }} interval={0} />
                           <Tooltip />
                           <Bar dataKey="Jumlah" radius={[0, 4, 4, 0]}>
-                            {topProblemsData.map((entry: { text: string; Jumlah: number }, i: number) => (
+                            {chartTopProblems.map((entry: { text: string; Jumlah: number }, i: number) => (
                               <Cell key={`cell-${i}`} fill={CHART_COLORS[i % CHART_COLORS.length]} />
                             ))}
                           </Bar>
